@@ -21,7 +21,8 @@ import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 
-import java.awt.geom.Point2D;
+import java.util.ArrayList;
+import java.util.HashMap;
 
 @RestController
 public class ApplicationController {
@@ -30,9 +31,6 @@ public class ApplicationController {
 
     @Autowired
     private PlacesFetcherController placesController;
-
-    @Autowired
-    private PlacesResult placesResult;
 
     @PostMapping(value = "/")
     public ResponseEntity<String> index(
@@ -50,38 +48,42 @@ public class ApplicationController {
             return new ResponseEntity<>(null, null, HttpStatus.BAD_REQUEST);
         }
 
-        Point2D coords = new Point2D.Double(reqData.getCoord().getX(), reqData.getCoord().getY());
-        String cuisine = reqData.getCuisine();
-        String type = reqData.getType();
-
-        placesController.setCoord(coords);
-        placesController.setCuisine(cuisine);
-        placesController.setType(type);
-        String respJSON = placesController.getPlaces();
-        placesResult.setResults(respJSON);
-
-        return sendResponse();
+        PlacesResult places = fetchPlaces(reqData);
+        return sendResponse(places);
     }
 
     private RequestBodyData parseReqBodyString(String reqBodyString) {
         Gson gson = new Gson();
         Double lat, lon;
-        String cuisine, type;
+        String cuisine, nextPageToken;
         try {
             JsonObject reqBodyJsonObj = gson.fromJson(reqBodyString, JsonObject.class);
             lat = reqBodyJsonObj.get("lat").getAsDouble();
             lon = reqBodyJsonObj.get("lon").getAsDouble();
             cuisine = reqBodyJsonObj.get("cuisine").getAsString();
-            type = reqBodyJsonObj.get("type").getAsString();
+            nextPageToken = reqBodyJsonObj.get("nextPageToken").getAsString();
         } catch (Exception e) {
             return null;
         }
-        return new RequestBodyData(lat, lon, type, cuisine);
+        return new RequestBodyData(lat, lon, cuisine, nextPageToken);
     }
 
-    private ResponseEntity<String> sendResponse() {
+    private PlacesResult fetchPlaces(RequestBodyData reqData) {
+        PlacesResult places = new PlacesResult();
+
+        placesController.setReqData(reqData);
+        String placesJSON = placesController.getPlaces();
+        places.populateFieldsFromJSON(placesJSON);
+
+        HashMap<String, ArrayList<String>> placesPhotos = placesController.getPlacesPhotos(places);
+        places.populatePlacesPhotos(placesPhotos);
+
+        return places;
+    }
+
+    private ResponseEntity<String> sendResponse(PlacesResult places) {
         Gson gson = new Gson();
-        String responseJson = gson.toJson(placesResult);
+        String responseJson = gson.toJson(places);
         return new ResponseEntity<>(responseJson, null, HttpStatus.OK);
     }
 }

@@ -6,17 +6,24 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class PlacesResult {
-    private ArrayList<Place> places;
+    private TreeMap<String, Place> places;
     private String nextPageToken;
     private String status;
 
     public PlacesResult() {
-        this.places = new ArrayList();
+        this.places = new TreeMap<>();
     }
 
-    public void setResults(String respJSON) {
+    public TreeMap<String, Place> getPlaces() {
+        return places;
+    }
+
+    public void populateFieldsFromJSON(String respJSON) {
         JsonObject respObject = null;
         Gson gson = new Gson();
 
@@ -37,17 +44,24 @@ public class PlacesResult {
                 JsonObject placeObj = resultsJsonArr.get(i).getAsJsonObject();
                 String placeID = placeObj.get("place_id").getAsString();
                 String name = placeObj.get("name").getAsString();
-                this.places.add(new Place(placeID, name));
+                places.put(placeID, new Place(placeID, name));
 
             }
         }
 
         if (nextPageTokenEle != null) {
-            this.nextPageToken = nextPageTokenEle.getAsString();
+            nextPageToken = nextPageTokenEle.getAsString();
         }
 
         if (statusEle != null) {
-            this.status = statusEle.getAsString();
+            status = statusEle.getAsString();
+        }
+    }
+
+    public void populatePlacesPhotos(HashMap<String, ArrayList<String>> placePhotos) {
+        for (Map.Entry<String, ArrayList<String>> entry : placePhotos.entrySet()) {
+            Place pl = places.get(entry.getKey());
+            pl.setPhotos(entry.getValue());
         }
     }
 }

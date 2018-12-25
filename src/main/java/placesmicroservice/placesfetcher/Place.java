@@ -10,6 +10,10 @@ public class Place {
     public Place(String placeID, String name) {
         this.placeID = placeID;
         this.name = name;
-        this.photos = new ArrayList<String>();
+        this.photos = new ArrayList<>();
+    }
+
+    public void setPhotos(ArrayList<String> photos) {
+        this.photos = photos;
     }
 }
