@@ -3,16 +3,16 @@ package placesmicroservice.placesfetcher;
 import java.util.ArrayList;
 
 public class PlacePhotosResult {
-    private String placeID;
+    private String placeId;
     private ArrayList<String> photos;
 
-    public PlacePhotosResult(String placeID, ArrayList<String> photos) {
-        this.placeID = placeID;
+    public PlacePhotosResult(String placeId, ArrayList<String> photos) {
+        this.placeId = placeId;
         this.photos = photos;
     }
 
-    public String getPlaceID() {
-        return placeID;
+    public String getPlaceId() {
+        return placeId;
     }
 
     public ArrayList<String> getPhotos() {

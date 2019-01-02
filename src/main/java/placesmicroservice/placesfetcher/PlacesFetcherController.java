@@ -6,12 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.Callable;
@@ -30,6 +24,9 @@ public class PlacesFetcherController {
     @Autowired
     private PhotosFetcher photosFetcher;
 
+    @Autowired
+    private HttpClient httpClient;
+
     public PlacesFetcherController(ExecutorCompletionService ecs) {
         this.ecs = ecs;
     }
@@ -39,35 +36,8 @@ public class PlacesFetcherController {
     }
 
     public String getPlaces() {
-        HttpURLConnection conn = null;
-
-        try {
-            URL url = new URL(buildNearbySearchUrl());
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setDoOutput(true);
-            DataOutputStream wr = new DataOutputStream (conn.getOutputStream());
-            wr.close();
-
-            InputStream is = conn.getInputStream();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-            StringBuilder resp = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                resp.append(line);
-                resp.append("\r");
-            }
-            reader.close();
-
-            return resp.toString();
-
-        } catch (Exception e) {
-            return null;
-        } finally {
-            if (conn != null) {
-                conn.disconnect();
-            }
-        }
+        String nearbySearchUrl = buildNearbySearchUrl();
+        return httpClient.getRequest(nearbySearchUrl);
     }
 
     public HashMap<String, ArrayList<String>> getPlacesPhotos(PlacesResult placesResult) {
@@ -84,13 +54,15 @@ public class PlacesFetcherController {
             for (int i = 0; i < numRequests; i++) {
                 PlacePhotosResult res = (PlacePhotosResult) ecs.take().get();
                 if (res != null) {
-                    photos.put(res.getPlaceID(), res.getPhotos());
+                    photos.put(res.getPlaceId(), res.getPhotos());
                 } else {
-                    // TODO: error handling
+                    String errMsg = "Result error: Unable to fetch photos for a place. Result is null";
+                    placesResult.addError(errMsg);
                 }
             }
         } catch (InterruptedException | ExecutionException e) {
-            // TODO: error handling
+            String errMsg = "Thread error: " + e.getMessage();
+            placesResult.addError(errMsg);
         }
 
         return photos;
@@ -102,14 +74,14 @@ public class PlacesFetcherController {
         String cuisine = reqData.getCuisine();
         String nextPageToken = reqData.getNextPageToken();
 
-        String baseURL = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?";
+        String baseUrl = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?";
         String location = "location=" + String.valueOf(lat) + "," + String.valueOf(lon);
         String radius = "&radius=3000";
         String type = "&type=restaurant";
         String keyword = (cuisine != null && cuisine.length() > 0) ? "&keyword=" + cuisine : "";
         String pageToken = (nextPageToken != null && nextPageToken.length() > 0) ? "&pagetoken=" + nextPageToken : "";
         String key = "&key=" + env.getProperty("places.api.key");
-        return baseURL + location + radius + type + keyword + pageToken + key;
+        return baseUrl + location + radius + type + keyword + pageToken + key;
     }
 
     private ConcurrentLinkedQueue<String> genTaskList(PlacesResult placesResult) {

@@ -33,8 +33,8 @@ public class ApplicationController {
     private PlacesFetcherController placesController;
 
     @PostMapping(value = "/")
-    public ResponseEntity<String> index(
-            @RequestHeader(value="Authorization") String token, @RequestBody String reqBodyString) throws Exception{
+    public ResponseEntity<String> index(@RequestHeader(value="Authorization") String token,
+                                        @RequestBody String reqBodyString) throws Exception{
         try {
             Algorithm algorithm = Algorithm.HMAC256(env.getProperty("jwt.secret"));
             JWTVerifier verifier = JWT.require(algorithm).build();
@@ -72,8 +72,8 @@ public class ApplicationController {
         PlacesResult places = new PlacesResult();
 
         placesController.setReqData(reqData);
-        String placesJSON = placesController.getPlaces();
-        places.populateFieldsFromJSON(placesJSON);
+        String placesJson = placesController.getPlaces();
+        places.populateFieldsFromJson(placesJson);
 
         HashMap<String, ArrayList<String>> placesPhotos = placesController.getPlacesPhotos(places);
         places.populatePlacesPhotos(placesPhotos);
@@ -82,8 +82,7 @@ public class ApplicationController {
     }
 
     private ResponseEntity<String> sendResponse(PlacesResult places) {
-        Gson gson = new Gson();
-        String responseJson = gson.toJson(places);
+        String responseJson = places.prepareJsonResult();
         return new ResponseEntity<>(responseJson, null, HttpStatus.OK);
     }
 }
